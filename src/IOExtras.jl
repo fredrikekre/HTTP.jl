@@ -55,7 +55,7 @@ struct IOError <: Exception
     message
 end
 
-Base.show(io::IO, e::IOError) = print(io, "IOError(", e.e, " ", e.message, ")\n")
+Base.showerror(io::IO, e::IOError) = print(io, "IOError(", e.e, " ", e.message, ")")
 
 
 """

@@ -27,7 +27,7 @@ end
 struct URLParsingError <: Exception
     msg::String
 end
-Base.show(io::IO, p::URLParsingError) = println(io, "HTTP.URLParsingError: ", p.msg)
+Base.showerror(io::IO, p::URLParsingError) = print(io, "HTTP.URLParsingError: ", p.msg)
 
 @enum(http_host_state,
     s_http_host_dead,
