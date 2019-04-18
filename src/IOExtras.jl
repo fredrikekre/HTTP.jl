@@ -1,4 +1,6 @@
 """
+    IOExtras
+
 This module defines extensions to the `Base.IO` interface to support:
  - `startwrite`, `closewrite`, `startread` and `closeread` for streams
     with transactional semantics.
@@ -41,6 +43,8 @@ isioerror(::MbedException) = true
 
 
 """
+    IOError <: Exception
+
 The request terminated with due to an IO-related error.
 
 Fields:
@@ -54,7 +58,7 @@ end
 Base.show(io::IO, e::IOError) = print(io, "IOError(", e.e, " ", e.message, ")\n")
 
 
-_doc = """
+"""
     startwrite(::IO)
     closewrite(::IO)
     startread(::IO)
@@ -62,13 +66,10 @@ _doc = """
 
 Signal start/end of write or read operations.
 """
-"$_doc"
+startwrite, closewrite, startread, closeread
 startwrite(io) = nothing
-"$_doc"
 closewrite(io) = nothing
-"$_doc"
 startread(io) = nothing
-"$_doc"
 closeread(io) = nothing
 
 using MbedTLS: SSLContext
