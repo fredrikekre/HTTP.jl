@@ -1,6 +1,6 @@
 """
 # Examples
-Let's put together an example http REST server for our hypothetical "ZooApplication" that utilizes various
+Let's put together an example HTTP REST server for a hypothetical "ZooApplication" that utilizes various
 parts of the Servers & Handler frameworks.
 
 Our application allows users to interact with custom "animal" JSON objects.
@@ -14,41 +14,35 @@ mutable struct Animal
 end
 ```
 
-Now we want to define our REST api, or how do we allow users to create, update,
+Now we want to define our REST API, to allow users to create, update,
 retrieve and delete animals:
 ```julia
 # use a plain `Dict` as a "data store"
 const ANIMALS = Dict{Int, Animal}()
-const NEXT_ID = Ref(0)
-function getNextId()
-    id = NEXT_ID[]
-    NEXT_ID[] += 1
-    return id
-end
 
 # "service" functions to actually do the work
 function createAnimal(req::HTTP.Request)
     animal = JSON2.read(IOBuffer(HTTP.payload(req)), Animal)
-    animal.id = getNextId()
     ANIMALS[animal.id] = animal
     return HTTP.Response(200, JSON2.write(animal))
 end
 
 function getAnimal(req::HTTP.Request)
-    animalId = HTTP.URIs.splitpath(req.target)[5] # /api/zoo/v1/animals/10, get 10
-    animal = ANIMALS[animalId]
+    id = parse(Int, HTTP.URIs.splitpath(req.target)[5]) # /api/zoo/v1/animals/10, get 10
+    animal = ANIMALS[id]
     return HTTP.Response(200, JSON2.write(animal))
 end
 
 function updateAnimal(req::HTTP.Request)
     animal = JSON2.read(IOBuffer(HTTP.payload(req)), Animal)
-    ANIMALS[animal.id] = animal
+    id = parse(Int, animal.id)
+    ANIMALS[id] = animal
     return HTTP.Response(200, JSON2.write(animal))
 end
 
 function deleteAnimal(req::HTTP.Request)
-    animalId = HTTP.URIs.splitpath(req.target)[5] # /api/zoo/v1/animals/10, get 10
-    delete!(ANIMALS, animal.id)
+    id = parse(Int, HTTP.URIs.splitpath(req.target)[5]) # /api/zoo/v1/animals/10, get 10
+    delete!(ANIMALS, id)
     return HTTP.Response(200)
 end
 
@@ -65,7 +59,7 @@ Great! At this point, we could spin up our server and let users start managing t
 HTTP.serve(ANIMAL_ROUTER, Sockets.localhost, 8081)
 ```
 
-Now, you may have noticed that there was a bit of repitition in our "service" functions, particularly
+Now, you may have noticed that there was a bit of repetition in our "service" functions, particularly
 with regards to the JSON serialization/deserialization. Perhaps we can simplify things by writing
 a custom "JSONHandler" to do some of the repetitive work for us.
 ```julia
@@ -74,24 +68,23 @@ function JSONHandler(req::HTTP.Request)
     body = IOBuffer(HTTP.payload(req))
     if eof(body)
         # no request body
-        response_body = handle(ANIMAL_ROUTER, req)
+        response_body = HTTP.handle(ANIMAL_ROUTER, req)
     else
         # there's a body, so pass it on to the handler we dispatch to
-        response_body = handle(ANIMAL_ROUTER, req, JSON2.read(body, Animal))
+        response_body = HTTP.handle(ANIMAL_ROUTER, req, JSON2.read(body, Animal))
     end
     return HTTP.Response(200, JSON2.write(response_body))
 end
 
 # **simplified** "service" functions
 function createAnimal(req::HTTP.Request, animal)
-    animal.id = getNextId()
     ANIMALS[animal.id] = animal
     return animal
 end
 
 function getAnimal(req::HTTP.Request)
-    animalId = HTTP.URIs.splitpath(req.target)[5] # /api/zoo/v1/animals/10, get 10
-    return ANIMALS[animalId]
+    id = parse(Int, HTTP.URIs.splitpath(req.target)[5]) # /api/zoo/v1/animals/10, get 10
+    return ANIMALS[id]
 end
 
 function updateAnimal(req::HTTP.Request, animal)
@@ -100,9 +93,19 @@ function updateAnimal(req::HTTP.Request, animal)
 end
 
 function deleteAnimal(req::HTTP.Request)
-    animalId = HTTP.URIs.splitpath(req.target)[5] # /api/zoo/v1/animals/10, get 10
-    delete!(ANIMALS, animal.id)
+    id = parse(Int, HTTP.URIs.splitpath(req.target)[5]) # /api/zoo/v1/animals/10, get 10
+    delete!(ANIMALS, id)
     return ""
+end
+
+# extra methods to dispatch to....
+function HTTP.handle(::HTTP.Handlers.RequestHandlerFunction{typeof(createAnimal)},
+                     req::HTTP.Request, animal::Animal)
+    return createAnimal(req, animal)
+end
+function HTTP.handle(::HTTP.Handlers.RequestHandlerFunction{typeof(updateAnimal)},
+                     req::HTTP.Request, animal::Animal)
+    return createAnimal(req, animal)
 end
 ```
 
